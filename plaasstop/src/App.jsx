@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
-import FindFarms from './pages/findFarms';
+import FindFarms from './pages/FindFarms';
 import AuthModal from './components/AuthModal'; 
 import './index.css';
 
