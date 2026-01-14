@@ -1,0 +1,9 @@
+plaasstop-firebase-adminsdk-fbsvc-fe7e01a362.json
+node_modules
+dist
+.vscode
+.env
+.env.local
+.env.*.local
+.DS_Store
+npm-debug.log*
