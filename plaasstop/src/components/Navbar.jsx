@@ -1,9 +1,17 @@
-import { ShoppingCart, Menu, User, Tractor } from 'lucide-react';
+import { ShoppingCart, User, Tractor, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import {supabase} from '../lib/supabaseClient';
 
-export default function Navbar() {
+export default function Navbar({ session, onOpenAuth }) {
+  
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    // Optional: Redirect to home or reload
+    window.location.href = '/'; 
+  };
+
   return (
-    <nav className="bg-white shadow-sm sticky top-0 z-50">
+    <nav className="bg-white shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16 items-center">
           
@@ -26,10 +34,26 @@ export default function Navbar() {
               <ShoppingCart className="h-6 w-6 text-gray-600" />
               <span className="absolute top-0 right-0 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center">0</span>
             </button>
-            <button className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer">
-              <User className="h-4 w-4" />
-              <span>Login</span>
-            </button>
+            
+            {/* Conditional Auth Button */}
+            {session ? (
+              <button 
+                onClick={handleLogout}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Sign Out</span>
+              </button>
+            ) : (
+              <button 
+                onClick={onOpenAuth}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer shadow-sm hover:shadow"
+              >
+                <User className="h-4 w-4" />
+                <span>Login</span>
+              </button>
+            )}
+
           </div>
         </div>
       </div>

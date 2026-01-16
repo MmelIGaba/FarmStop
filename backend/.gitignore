@@ -1,1 +1,21 @@
+# Firebase Admin Keys (Legacy/Backup)
 plaasstop-firebase-adminsdk-fbsvc-74cf149513.json
+plaasstop-firebase-adminsdk-fbsvc-fe7e01a362.json
+
+# Dependencies
+node_modules
+
+# Build
+dist
+
+# Editor
+.vscode
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Logs
+npm-debug.log*

@@ -81,6 +81,7 @@ print(f"--- Starting Import ---")
 
 for lead in raw_leads:
     try:
+        # Check for duplicates based on name
         existing = (
             supabase.table("farms").select("*").eq("name", lead["name"]).execute()
         )
@@ -91,7 +92,7 @@ for lead in raw_leads:
         location = get_lat_long(lead["address"])
 
         if location:
-
+            # Create PostGIS Point string
             point_str = f"POINT({location.longitude} {location.latitude})"
 
             data = {

@@ -12,18 +12,24 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
-// --- MIDDLEWARE ---
-const app = express();
-app.use(express.json());
 
+const app = express();
+
+// 2. Middleware Setup
+app.use(express.json()); // Parse JSON first
+
+// Logging Middleware (now works because express.json() is above it)
 app.use((req, res, next) => {
   console.log("METHOD:", req.method);
   console.log("HEADERS:", req.headers["content-type"]);
-  console.log("BODY RAW:", req.body);
+  // Only log body if it exists, to avoid clutter
+  if (req.body && Object.keys(req.body).length > 0) {
+    console.log("BODY RAW:", JSON.stringify(req.body, null, 2));
+  }
   next();
 });
 
-// 2. Security Middleware
+// Security Middleware
 app.use(helmet());
 app.use(hpp());
 app.use(cors({ origin: "http://localhost:5173" })); // Allow Vite Frontend
@@ -100,7 +106,6 @@ app.post("/api/auth/sync", verifyToken, async (req, res) => {
 
   try {
     // 1. Upsert User Profile
-    // Note: You must create a 'users' table in Supabase SQL Editor first!
     const { error: userError } = await supabase.from("users").upsert({
       id: id, // Link to Auth ID
       email: email,
@@ -212,7 +217,7 @@ app.post("/api/farms/search", async (req, res) => {
     res.json(results);
   } catch (error) {
     console.error("Search Error:", error);
-    res.status(500).json({ error: "Search failed" + error.message });
+    res.status(500).json({ error: "Search failed: " + error.message });
   }
 });
 
