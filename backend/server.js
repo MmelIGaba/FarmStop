@@ -12,8 +12,10 @@ const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_KEY
 );
-
+// --- MIDDLEWARE ---
 const app = express();
+app.use(express.json());
+
 app.use((req, res, next) => {
   console.log("METHOD:", req.method);
   console.log("HEADERS:", req.headers["content-type"]);
@@ -25,7 +27,6 @@ app.use((req, res, next) => {
 app.use(helmet());
 app.use(hpp());
 app.use(cors({ origin: "http://localhost:5173" })); // Allow Vite Frontend
-app.use(express.json());
 
 // 3. Rate Limiting
 const limiter = rateLimit({
