@@ -8,7 +8,8 @@ import AuthModal from './components/AuthModal';
 
 // Pages
 import Home from './pages/Home';
-import FindFarms from './pages/FindFarms'; // Ensure file is named FindFarms.jsx (capital F)
+import FindFarms from './pages/FindFarms'; 
+import About from './pages/About';
 
 import './index.css';
 
@@ -46,6 +47,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/marketplace" element={<FindFarms />} />
           <Route path="/vendors" element={<div className="p-20 text-center">Vendor Portal Coming Soon</div>} />
+          <Route path="/about" element={<About />} />
         </Routes>
 
         {/* Global Auth Modal */}

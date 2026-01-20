@@ -12,13 +12,13 @@
   "type": "commonjs",
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
-    "@supabase/supabase-js": "^2.90.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "hpp": "^0.2.3",
-    "joi": "^18.0.2"
+    "joi": "^18.0.2",
+    "pg": "^8.17.1"
   }
 }
