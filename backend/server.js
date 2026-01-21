@@ -176,3 +176,4 @@ const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT} \n http://localhost:${PORT}/health/ready`);
 });
+console.log(`Server running on port ${PORT} - Deployed via GitHub Actions!`);
