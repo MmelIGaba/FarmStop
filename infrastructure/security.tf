@@ -81,6 +81,14 @@ resource "aws_security_group" "db_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.app_sg.id]
   }
+    # Temporary: Allow access from ANYWHERE so you can initialize the DB
+  ingress {
+    description = "Postgres Public Access"
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"] 
+  }
   
   # Also allow traffic from your local IP for initial setup/migration?
   # If you want to connect from your laptop, we need to add that here.

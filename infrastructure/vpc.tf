@@ -73,3 +73,33 @@ resource "aws_subnet" "private_subnet_2" {
     Name = "plaasstop-private-subnet-2"
   }
 }
+
+# 8. Allow Private Subnet 1 to access Internet (Temporary for Setup)
+resource "aws_route_table_association" "private_assoc_1" {
+  subnet_id      = aws_subnet.private_subnet.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# 9. Allow Private Subnet 2 to access Internet (Temporary for Setup)
+resource "aws_route_table_association" "private_assoc_2" {
+  subnet_id      = aws_subnet.private_subnet_2.id
+  route_table_id = aws_route_table.public_rt.id
+}
+
+# 10. Second Public Subnet (Required for ALB)
+resource "aws_subnet" "public_subnet_2" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = "10.0.4.0/24"
+  availability_zone       = "us-east-1b" # Must be different AZ
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "plaasstop-public-subnet-2"
+  }
+}
+
+# 11. Associate Route Table with Public Subnet 2
+resource "aws_route_table_association" "public_assoc_2" {
+  subnet_id      = aws_subnet.public_subnet_2.id
+  route_table_id = aws_route_table.public_rt.id
+}

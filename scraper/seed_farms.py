@@ -1,21 +1,28 @@
 import os
-from dotenv import load_dotenv  
-from supabase import create_client, Client
-from geopy.geocoders import Nominatim
-from geopy.exc import GeocoderTimedOut
 import time
+import json
+import psycopg2
+from dotenv import load_dotenv  
+from geopy.geocoders import Nominatim
 
 load_dotenv()
 
-# --- CONFIGURATION ---
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# --- 1. CONNECT TO AWS RDS ---
+db_url = os.getenv("DATABASE_URL")
+if not db_url:
+    print("ERROR: DATABASE_URL is missing from .env")
+    exit(1)
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise ValueError("Missing SUPABASE_URL or SUPABASE_KEY. check your .env file")
+try:
+    conn = psycopg2.connect(db_url)
+    conn.autocommit = True # Apply changes immediately
+    cursor = conn.cursor()
+    print("✅ Connected to AWS RDS")
+except Exception as e:
+    print(f"❌ Connection Failed: {e}")
+    exit(1)
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-geolocator = Nominatim(user_agent="plaasstop_scraper_v2")
+geolocator = Nominatim(user_agent="plaasstop_scraper_v3")
 
 raw_leads = [
     # --- PRETORIA & CENTURION ---
@@ -77,39 +84,46 @@ def get_lat_long(address):
         return None
 
 
-print(f"--- Starting Import ---")
+print(f"--- Starting AWS Import ---")
 
 for lead in raw_leads:
     try:
-        # Check for duplicates based on name
-        existing = (
-            supabase.table("farms").select("*").eq("name", lead["name"]).execute()
-        )
-        if len(existing.data) > 0:
+        # --- CHECK DUPLICATES (SQL) ---
+        cursor.execute("SELECT id FROM farms WHERE name = %s", (lead["name"],))
+        existing = cursor.fetchone()
+        
+        if existing:
             print(f"[SKIP] {lead['name']} exists.")
             continue
 
         location = get_lat_long(lead["address"])
 
         if location:
-            # Create PostGIS Point string
+            # --- INSERT INTO AWS (SQL) ---
+            insert_query = """
+                INSERT INTO farms (name, type, status, products, contact, location)
+                VALUES (%s, 'lead', 'unclaimed', %s, %s, ST_GeomFromText(%s, 4326))
+            """
+            
+            # Create PostGIS Point string: POINT(Long Lat)
             point_str = f"POINT({location.longitude} {location.latitude})"
-
-            data = {
-                "name": lead["name"],
-                "type": "lead",
-                "status": "unclaimed",
-                "products": lead["products"],
-                "contact": {"phone": lead["phone"], "address": lead["address"]},
-                "location": point_str,
-            }
-
-            supabase.table("farms").insert(data).execute()
+            
+            cursor.execute(insert_query, (
+                lead["name"], 
+                lead["products"], 
+                json.dumps({"phone": lead["phone"], "address": lead["address"]}),
+                point_str
+            ))
+            
             print(f" -> ADDED: {lead['name']}")
         else:
             print(" -> ERROR: No Address Found")
 
-        time.sleep(1.2)
+        time.sleep(1.2) # Be nice to the geocoding API
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error processing {lead['name']}: {e}")
+
+cursor.close()
+conn.close()
+print("--- Import Complete ---")
