@@ -29,19 +29,21 @@ resource "aws_launch_template" "app_lt" {
   user_data = base64encode(<<-EOF
               #!/bin/bash
               dnf update -y
+              
+              # 1. Force Install Node.js 20 (Fixes EBADENGINE warnings)
+              curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
               dnf install -y nodejs git postgresql15
 
               mkdir -p /var/www/plaasstop
               cd /var/www/plaasstop
 
-              # --- clone from correct branch ---
+              # 2. Clone Repo
               git clone -b dev https://github.com/MmelIGaba/FarmStop.git .
-              # ---------------------------
 
               cd backend
               npm install
 
-              # Fills in the DB address automatically
+              # 3. Inject Env Vars
               echo "DATABASE_URL=postgres://postgres:mysecretpassword@${aws_db_instance.default.address}:5432/plaasstop" > .env
               echo "PORT=5000" >> .env
 
@@ -68,7 +70,7 @@ resource "aws_lb_target_group" "app_tg" {
   vpc_id   = aws_vpc.main.id
 
   health_check {
-    path                = "/" # We will change this to /health/ready later
+    path                = "/health/ready" # We will change this to /health/ready later
     matcher             = "200"
     interval            = 30
     timeout             = 5
