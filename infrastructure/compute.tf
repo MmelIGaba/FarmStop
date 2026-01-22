@@ -46,6 +46,7 @@ resource "aws_launch_template" "app_lt" {
               # 3. Inject Env Vars
               echo "DATABASE_URL=postgres://postgres:mysecretpassword@${aws_db_instance.default.address}:5432/plaasstop" > .env
               echo "PORT=5000" >> .env
+              echo "FRONTEND_URL=http://plaasstop-frontend-mmeli.s3-website-us-east-1.amazonaws.com" >> .env
 
               npm install -g pm2
               pm2 start server.js
