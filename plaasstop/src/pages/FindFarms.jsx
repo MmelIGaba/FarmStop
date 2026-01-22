@@ -1,20 +1,9 @@
 import { useState, useEffect } from "react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
-import {
-  Search,
-  MapPin,
-  Store,
-  AlertCircle,
-  Phone,
-  ArrowRight,
-  Loader2,
-  CheckCircle,
-} from "lucide-react";
-import { supabase } from "../lib/supabaseClient"; // Import Supabase
+import { MapPin, Store, Loader2 } from "lucide-react";
+import { fetchAuthSession } from "aws-amplify/auth";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-
-// Fix Leaflet Icons
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
 import markerShadow from "leaflet/dist/images/marker-shadow.png";
@@ -38,32 +27,41 @@ export default function FindFarms() {
   const [position, setPosition] = useState(null);
   const [farms, setFarms] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [radius, setRadius] = useState(100);
+  const [radius, setRadius] = useState(50); // Default 50km
   const [selectedFarm, setSelectedFarm] = useState(null);
-  const [claimingId, setClaimingId] = useState(null); // Track which farm is being claimed
+  const [claimingId, setClaimingId] = useState(null);
 
-  // 1. Get Location
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
-      () => setPosition([-25.7479, 28.2293]),
-    );
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setPosition([pos.coords.latitude, pos.coords.longitude]),
+        (err) => {
+          console.warn("Location access denied, using default (Pretoria).");
+          setPosition([-25.7479, 28.2293]);
+        }
+      );
+    } else {
+      setPosition([-25.7479, 28.2293]);
+    }
   }, []);
 
-  // 2. Fetch Farms
   const fetchFarms = async () => {
     if (!position) return;
     setLoading(true);
     try {
-      const res = await fetch("http://localhost:5000/api/farms/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          lat: position[0],
-          lng: position[1],
-          radiusInKm: radius,
-        }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/farms/search`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            lat: position[0],
+            lng: position[1],
+            radiusInKm: radius,
+          }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to fetch farms");
       const data = await res.json();
       setFarms(data);
     } catch (err) {
@@ -77,29 +75,28 @@ export default function FindFarms() {
     fetchFarms();
   }, [position, radius]);
 
-  // 3. CLAIM LOGIC (The Integration Point)
   const handleClaim = async (farm) => {
     setClaimingId(farm.id);
-
     try {
-      // A. Get Current User Session
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        alert("Please log in to claim this farm.");
+      let session;
+      try {
+        session = await fetchAuthSession();
+        if (!session.tokens) throw new Error("No session");
+      } catch (e) {
+        alert("Please log in to claim a farm.");
+        setClaimingId(null);
         return;
       }
 
-      // B. Call Backend to Claim
+      const token = session.tokens.accessToken.toString();
+
       const res = await fetch(
-        `http://localhost:5000/api/farms/${farm.id}/claim`,
+        `${import.meta.env.VITE_API_URL}/api/farms/${farm.id}/claim`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         },
       );
@@ -109,7 +106,7 @@ export default function FindFarms() {
       if (!res.ok) throw new Error(result.error || "Failed to claim");
 
       alert("Success! You are now the owner of this farm profile.");
-      fetchFarms(); // Refresh list to show "Vendor" status
+      fetchFarms();
     } catch (error) {
       alert(error.message);
     } finally {
@@ -120,15 +117,15 @@ export default function FindFarms() {
   if (!position)
     return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="animate-spin text-green-600" />
+        <Loader2 className="animate-spin text-green-600 h-8 w-8" />
       </div>
     );
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] md:flex-row bg-gray-50">
-      {/* List Panel */}
-      <div className="w-full md:w-1/3 overflow-y-auto p-4 border-r border-gray-200 bg-white z-10 shadow-lg">
-        <div className="mb-6">
+      {/* --- LEFT PANEL: LIST --- */}
+      <div className="w-full md:w-1/3 overflow-y-auto p-4 border-r border-gray-200 bg-white z-10 shadow-lg relative">
+        <div className="mb-6 sticky top-0 bg-white pt-2 pb-4 border-b z-20">
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <MapPin className="text-green-600" /> Farms Near Me
           </h1>
@@ -139,7 +136,7 @@ export default function FindFarms() {
             </div>
             <input
               type="range"
-              min="10"
+              min="5"
               max="200"
               value={radius}
               onChange={(e) => setRadius(Number(e.target.value))}
@@ -149,10 +146,20 @@ export default function FindFarms() {
         </div>
 
         <div className="space-y-4 pb-20">
+          {farms.length === 0 && !loading && (
+            <div className="text-center text-gray-500 py-10">
+                No farms found in this area. Try increasing the radius.
+            </div>
+          )}
+          
           {farms.map((farm) => (
             <div
               key={farm.id}
-              onClick={() => setSelectedFarm(farm)}
+              onClick={() => {
+                setSelectedFarm(farm);
+                // Optional: Pan map to selected farm
+                setPosition([farm.lat, farm.lng]); 
+              }}
               className={`p-4 rounded-xl border cursor-pointer transition-all hover:shadow-md ${selectedFarm?.id === farm.id ? "ring-2 ring-green-500 bg-green-50" : "bg-white border-gray-200"}`}
             >
               <div className="flex justify-between items-start">
@@ -184,7 +191,7 @@ export default function FindFarms() {
                 ))}
               </div>
 
-              {/* CLAIM BUTTON (Integration Logic) */}
+              {/* CLAIM BUTTON */}
               {farm.type === "lead" && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                   <button
@@ -193,7 +200,7 @@ export default function FindFarms() {
                       handleClaim(farm);
                     }}
                     disabled={claimingId === farm.id}
-                    className="text-xs w-full border border-green-600 text-green-700 py-2 rounded-lg hover:bg-green-50 font-medium transition flex justify-center items-center gap-2"
+                    className="text-xs w-full border border-green-600 text-green-700 py-2 rounded-lg hover:bg-green-50 font-medium transition flex justify-center items-center gap-2 cursor-pointer"
                   >
                     {claimingId === farm.id ? (
                       <Loader2 className="h-3 w-3 animate-spin" />
@@ -208,7 +215,7 @@ export default function FindFarms() {
         </div>
       </div>
 
-      {/* Map Panel */}
+      {/* --- RIGHT PANEL: MAP --- */}
       <div className="hidden md:block w-2/3 h-full relative">
         <MapContainer
           center={position}
@@ -216,28 +223,33 @@ export default function FindFarms() {
           style={{ height: "100%", width: "100%" }}
         >
           <TileLayer
-            attribution="&copy; OpenStreetMap"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <MapUpdater center={position} />
+          
+          {/* USER LOCATION */}
           <Marker position={position}>
             <Popup>You are here</Popup>
           </Marker>
-          {farms.map((farm) =>
-            farm.lat && farm.lng ? (
+
+          {/* FARM LOCATIONS - Now using real coordinates */}
+          {farms.map((farm) => (
+             (farm.lat && farm.lng) ? (
               <Marker
                 key={farm.id}
                 position={[farm.lat, farm.lng]}
                 eventHandlers={{ click: () => setSelectedFarm(farm) }}
               >
                 <Popup>
-                  <strong>{farm.name}</strong>
-                  <br />
-                  {farm.distance}
+                  <div className="p-1">
+                      <strong>{farm.name}</strong><br/>
+                      <span className="text-xs">{farm.products?.join(", ")}</span>
+                  </div>
                 </Popup>
               </Marker>
-            ) : null,
-          )}
+            ) : null
+          ))}
         </MapContainer>
       </div>
     </div>
