@@ -1,129 +1,85 @@
-import os
-import time
 import json
+import time
 import psycopg2
-from dotenv import load_dotenv  
 from geopy.geocoders import Nominatim
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
-load_dotenv()
+# --- MODERN CONFIG MANAGEMENT ---
+class Settings(BaseSettings):
+    database_url: str 
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-# --- 1. CONNECT TO AWS RDS ---
-db_url = os.getenv("DATABASE_URL")
-if not db_url:
-    print("ERROR: DATABASE_URL is missing from .env")
-    exit(1)
+settings = Settings()
 
-try:
-    conn = psycopg2.connect(db_url)
-    conn.autocommit = True # Apply changes immediately
-    cursor = conn.cursor()
-    print("✅ Connected to AWS RDS")
-except Exception as e:
-    print(f"❌ Connection Failed: {e}")
-    exit(1)
+def get_db_connection():
+    return psycopg2.connect(settings.database_url)
 
-geolocator = Nominatim(user_agent="plaasstop_scraper_v3")
-
-raw_leads = [
-    # --- PRETORIA & CENTURION ---
-    {
-        "name": "Dairy King Estate",
-        "address": "Irene Dairy Farm, Pretoria, South Africa",
-        "products": ["Milk", "Cream", "Butter"],
-        "phone": "012-000-1111",
-    },
-    {
-        "name": "Centurion Egg Depot",
-        "address": "Rooihuiskraal, Centurion, South Africa",
-        "products": ["Free Range Eggs"],
-        "phone": "012-666-7777",
-    },
-    
-    # --- JOHANNESBURG & WEST RAND ---
-    {
-        "name": "Jozi Organic Veg",
-        "address": "Muldersdrift, Gauteng, South Africa",
-        "products": ["Spinach", "Kale", "Tomatoes"],
-        "phone": "082-999-8888",
-    },
-    {
-        "name": "Lanseria Berry Farm",
-        "address": "Lanseria, Gauteng, South Africa",
-        "products": ["Strawberries", "Jam"],
-        "phone": "011-555-4321",
-    },
-
-    # --- HARTBEESPOORT & BRITS ---
-    {
-        "name": "Harties Fresh Fish",
-        "address": "Hartbeespoort, North West, South Africa",
-        "products": ["Tilapia", "Trout"],
-        "phone": "012-253-1000",
-    },
-    {
-        "name": "Brits Citrus Co-op",
-        "address": "Brits, North West, South Africa",
-        "products": ["Oranges", "Lemons", "Juice"],
-        "phone": "012-250-9999",
-    },
-
-    # --- MAGALIESBURG ---
-    {
-        "name": "Magalies Mushroom Shack",
-        "address": "Magaliesburg, Gauteng, South Africa",
-        "products": ["Oyster Mushrooms", "Button Mushrooms"],
-        "phone": "014-577-1234",
-    }
-]
-
-
-def get_lat_long(address):
+def get_lat_long(geolocator, address):
     try:
         return geolocator.geocode(address, timeout=10)
     except:
         return None
 
 
-print(f"--- Starting AWS Import ---")
+# --- THE LAMBDA HANDLER ---
+# This is what AWS calls when the scheduled event fires
+def lambda_handler(event, context):
+    print("--- Starting Scraper Job ---")
+    
+    conn = get_db_connection()
+    conn.autocommit = True
+    cursor = conn.cursor()
+    
+    geolocator = Nominatim(user_agent="plaasstop_scraper_lambda")
 
-for lead in raw_leads:
-    try:
-        # --- CHECK DUPLICATES (SQL) ---
-        cursor.execute("SELECT id FROM farms WHERE name = %s", (lead["name"],))
-        existing = cursor.fetchone()
-        
-        if existing:
-            print(f"[SKIP] {lead['name']} exists.")
-            continue
+    raw_leads = [
+        {"name": "Dairy King Estate", "address": "Irene Dairy Farm, Pretoria, South Africa", "products": ["Milk"], "phone": "012-000-1111"},
+        {"name": "Centurion Egg Depot", "address": "Rooihuiskraal, Centurion, South Africa", "products": ["Eggs"], "phone": "012-666-7777"},
+        # ... Add more leads here ... maybe automate this later from db of current leads? 
+    ]
 
-        location = get_lat_long(lead["address"])
+    added_count = 0
 
-        if location:
-            # --- INSERT INTO AWS (SQL) ---
-            insert_query = """
-                INSERT INTO farms (name, type, status, products, contact, location)
-                VALUES (%s, 'lead', 'unclaimed', %s, %s, ST_GeomFromText(%s, 4326))
-            """
-            
-            # Create PostGIS Point string: POINT(Long Lat)
-            point_str = f"POINT({location.longitude} {location.latitude})"
-            
-            cursor.execute(insert_query, (
-                lead["name"], 
-                lead["products"], 
-                json.dumps({"phone": lead["phone"], "address": lead["address"]}),
-                point_str
-            ))
-            
-            print(f" -> ADDED: {lead['name']}")
-        else:
-            print(" -> ERROR: No Address Found")
+    for lead in raw_leads:
+        try:
+            cursor.execute("SELECT id FROM farms WHERE name = %s", (lead["name"],))
+            if cursor.fetchone():
+                print(f"[SKIP] {lead['name']}")
+                continue
 
-        time.sleep(1.2) # Be nice to the geocoding API
+            location = get_lat_long(geolocator, lead["address"])
 
-    except Exception as e:
-        print(f"Error processing {lead['name']}: {e}")
+            if location:
+                query = """
+                    INSERT INTO farms (name, type, status, products, contact, location)
+                    VALUES (%s, 'lead', 'unclaimed', %s, %s, ST_GeomFromText(%s, 4326))
+                """
+                point_str = f"POINT({location.longitude} {location.latitude})"
+                
+                cursor.execute(query, (
+                    lead["name"], 
+                    lead["products"], 
+                    json.dumps({"phone": lead["phone"], "address": lead["address"]}),
+                    point_str
+                ))
+                print(f" -> ADDED: {lead['name']}")
+                added_count += 1
+                
+            time.sleep(1.0) 
 
-cursor.close()
-conn.close()
-print("--- Import Complete ---")
+        except Exception as e:
+            print(f"Error on {lead['name']}: {e}")
+
+    cursor.close()
+    conn.close()
+    
+    return {
+        'statusCode': 200,
+        'body': json.dumps(f"Scrape Complete. Added {added_count} farms.")
+    }
+
+# Local testing support
+if __name__ == "__main__":
+    from dotenv import load_dotenv
+    load_dotenv()
+    lambda_handler(None, None)
