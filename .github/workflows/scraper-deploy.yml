@@ -1,0 +1,54 @@
+name: Deploy Scraper
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scraper/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./scraper
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, Tag, and Push Image to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          # Push specific tag
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          # Tag as latest and push
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+      - name: Update Lambda Function
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ secrets.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          aws lambda update-function-code \
+            --function-name ${{ secrets.LAMBDA_FUNCTION_NAME }} \
+            --image-uri $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
