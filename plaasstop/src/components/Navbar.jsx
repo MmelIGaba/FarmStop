@@ -1,13 +1,16 @@
 import { ShoppingCart, User, Tractor, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import {supabase} from '../lib/supabaseClient';
+import { signOut } from 'aws-amplify/auth'; 
 
-export default function Navbar({ session, onOpenAuth }) {
+export default function Navbar({ user, onOpenAuth }) {
   
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    // Optional: Redirect to home or reload
-    window.location.href = '/'; 
+    try {
+      await signOut(); t
+      window.location.href = '/'; 
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
   };
 
   return (
@@ -36,7 +39,7 @@ export default function Navbar({ session, onOpenAuth }) {
             </button>
             
             {/* Conditional Auth Button */}
-            {session ? (
+            {user ? ( // <--- CHANGED: Checks 'user' object from Amplify
               <button 
                 onClick={handleLogout}
                 className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg font-medium transition cursor-pointer"
