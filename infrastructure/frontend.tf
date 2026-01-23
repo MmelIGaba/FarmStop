@@ -2,7 +2,7 @@
 
 # 1. The S3 Bucket
 resource "aws_s3_bucket" "frontend_bucket" {
-  bucket        = "plaasstop-frontend-mmeli"
+  bucket        = "plaasstop-frontend-mmeli" # Must be unique
   force_destroy = true
 }
 
@@ -45,29 +45,67 @@ resource "aws_s3_bucket_policy" "public_read" {
   depends_on = [aws_s3_bucket_public_access_block.frontend_access]
 }
 
-# 4. --- NEW: CloudFront Distribution ---
+# 4. --- CloudFront Distribution ---
 resource "aws_cloudfront_distribution" "frontend_cdn" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  # Origin: Points to the S3 Website Endpoint
+  # Origin A: S3 (Frontend)
   origin {
     domain_name = aws_s3_bucket_website_configuration.frontend_hosting.website_endpoint
-    origin_id   = "S3-plaasstop-frontend"
+    origin_id   = "S3-Frontend"
 
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only" # S3 Websites only support HTTP
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
+  # Origin B: Load Balancer (Backend API)
+  origin {
+    domain_name = aws_lb.main_alb.dns_name
+    origin_id   = "ALB-Backend"
+
+    custom_origin_config {
+      http_port              = 80
+      https_port             = 443
+      origin_protocol_policy = "http-only" # CF talks to ALB over HTTP (Hidden from user)
+      origin_ssl_protocols   = ["TLSv1.2"]
+    }
+  }
+
+  # Behavior for API calls (Route /api/* to ALB)
+  ordered_cache_behavior {
+    path_pattern     = "/api/*"
+    target_origin_id = "ALB-Backend"
+
+    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods   = ["GET", "HEAD"]
+    
+    # Do NOT cache API responses
+    min_ttl          = 0
+    default_ttl      = 0
+    max_ttl          = 0
+
+    forwarded_values {
+      query_string = true
+      headers      = ["Authorization", "Host"] # Pass the Auth Token!
+      cookies {
+        forward = "all"
+      }
+    }
+
+    viewer_protocol_policy = "redirect-to-https"
+  }
+
+  # Default Behavior (Serve React App)
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "S3-plaasstop-frontend"
+    target_origin_id = "S3-Frontend"
 
     forwarded_values {
       query_string = false
@@ -76,7 +114,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
       }
     }
 
-    viewer_protocol_policy = "redirect-to-https" # Forces HTTPS!
+    viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
