@@ -13,7 +13,6 @@
   "dependencies": {
     "@aws-amplify/auth": "^6.17.2",
     "@supabase-js/source": "github:supabase/supabase-js",
-    "@supabase/supabase-js": "^2.90.1",
     "aws-amplify": "^6.15.10",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.473.0",
