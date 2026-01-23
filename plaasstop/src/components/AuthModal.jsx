@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
+  KeyRound, // Added Icon
 } from "lucide-react";
 import {
   signIn,
@@ -16,11 +17,13 @@ import {
   confirmSignUp,
   resendSignUpCode,
   resetPassword,
+  confirmResetPassword, // <--- NEW IMPORT
   fetchAuthSession,
 } from "aws-amplify/auth";
 
 export default function AuthModal({ isOpen, onClose }) {
-  const [view, setView] = useState("login");
+  // Views: 'login', 'signup', 'confirm', 'forgot-password', 'forgot-password-submit'
+  const [view, setView] = useState("login"); 
   const [role, setRole] = useState("buyer");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -28,7 +31,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
   const [formData, setFormData] = useState({
     email: "",
-    password: "",
+    password: "", // Acts as "New Password" during reset
     name: "",
     farmName: "",
     code: "",
@@ -82,19 +85,21 @@ export default function AuthModal({ isOpen, onClose }) {
 
         setSuccessMsg(`Code sent to ${formData.email}`);
         setView("confirm");
+      
       } else if (view === "confirm") {
+        const cleanCode = formData.code.trim();
         await confirmSignUp({
           username: formData.email,
-          confirmationCode: formData.code,
+          confirmationCode: cleanCode,
         });
 
         await signIn({
           username: formData.email,
           password: formData.password,
         });
-
         await syncUser();
         onClose();
+
       } else if (view === "login") {
         try {
           const { isSignedIn } = await signIn({
@@ -108,16 +113,35 @@ export default function AuthModal({ isOpen, onClose }) {
           }
         } catch (loginErr) {
           if (loginErr.name === "UserNotConfirmedException") {
-            setError("Please verify your email first.");
+            try {
+                await resendSignUpCode({ username: formData.email });
+                setSuccessMsg("Account unverified. A new code has been sent.");
+            } catch (resendErr) {
+                setSuccessMsg("Account unverified. Please enter the code.");
+            }
             setView("confirm");
             return;
           }
           throw loginErr;
         }
+
+      // --- STEP 1: REQUEST RESET ---
       } else if (view === "forgot-password") {
         await resetPassword({ username: formData.email });
-        setSuccessMsg("Reset code sent.");
+        setSuccessMsg("Reset code sent to email.");
+        setView("forgot-password-submit"); // Move to Step 2
+      
+      // --- STEP 2: CONFIRM RESET ---
+      } else if (view === "forgot-password-submit") {
+        await confirmResetPassword({
+            username: formData.email,
+            confirmationCode: formData.code,
+            newPassword: formData.password
+        });
+        setSuccessMsg("Password changed! Please log in.");
+        setView("login");
       }
+
     } catch (err) {
       console.error(err);
       setError(err.message || "An error occurred");
@@ -125,6 +149,15 @@ export default function AuthModal({ isOpen, onClose }) {
       setLoading(false);
     }
   };
+
+  // Helper to determine title
+  const getTitle = () => {
+    if(view === "login") return "Welcome back";
+    if(view === "signup") return "Create an account";
+    if(view === "confirm") return "Verify Email";
+    if(view === "forgot-password") return "Reset Password";
+    if(view === "forgot-password-submit") return "Set New Password";
+  }
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
@@ -146,10 +179,7 @@ export default function AuthModal({ isOpen, onClose }) {
               <Tractor className="h-6 w-6 text-green-600" />
             </div>
             <h2 className="text-2xl font-bold text-gray-900">
-              {view === "login" && "Welcome back"}
-              {view === "signup" && "Create an account"}
-              {view === "confirm" && "Verify Email"}
-              {view === "forgot-password" && "Reset Password"}
+              {getTitle()}
             </h2>
           </div>
 
@@ -164,7 +194,6 @@ export default function AuthModal({ isOpen, onClose }) {
             </div>
           )}
 
-          {/* Role Selection (Only for Signup) */}
           {view === "signup" && (
             <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
               {["buyer", "vendor"].map((r) => (
@@ -174,11 +203,7 @@ export default function AuthModal({ isOpen, onClose }) {
                   onClick={() => setRole(r)}
                   className={`flex-1 flex items-center justify-center gap-2 py-2 text-sm font-medium rounded-md transition-all capitalize cursor-pointer ${role === r ? "bg-white shadow text-green-700" : "text-gray-500 hover:text-gray-700"}`}
                 >
-                  {r === "buyer" ? (
-                    <User className="h-4 w-4" />
-                  ) : (
-                    <Store className="h-4 w-4" />
-                  )}{" "}
+                  {r === "buyer" ? <User className="h-4 w-4" /> : <Store className="h-4 w-4" />}
                   {r === "vendor" ? "Farmer" : "Buyer"}
                 </button>
               ))}
@@ -186,21 +211,19 @@ export default function AuthModal({ isOpen, onClose }) {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* --- NAME INPUT --- */}
+            {/* NAME */}
             {view === "signup" && (
               <input
                 type="text"
                 required
                 placeholder="Full Name"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
               />
             )}
 
-            {/* --- EMAIL INPUT --- */}
-            {view !== "confirm" && (
+            {/* EMAIL - Hidden on step 2 of reset to avoid confusion, or keep readOnly */}
+            {view !== "confirm" && view !== "forgot-password-submit" && (
               <div className="relative">
                 <Mail className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
@@ -209,55 +232,46 @@ export default function AuthModal({ isOpen, onClose }) {
                   value={formData.email}
                   placeholder="Email"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 />
               </div>
             )}
 
-            {/* --- PASSWORD INPUT --- */}
-            {(view === "signup" || view === "login") && (
+            {/* PASSWORD (Used for Login, Signup, AND New Password) */}
+            {(view === "signup" || view === "login" || view === "forgot-password-submit") && (
               <div className="relative">
                 <Lock className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
                   type="password"
                   required
-                  placeholder="Password"
+                  placeholder={view === "forgot-password-submit" ? "New Password" : "Password"}
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
               </div>
             )}
 
-            {/* --- CONFIRMATION CODE INPUT --- */}
-            {view === "confirm" && (
+            {/* CODE INPUT (Used for Email Confirm AND Password Reset Confirm) */}
+            {(view === "confirm" || view === "forgot-password-submit") && (
               <div className="relative">
-                <CheckCircle className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <KeyRound className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
                 <input
                   type="text"
                   required
-                  placeholder="6-digit Code"
+                  placeholder="Verification Code"
                   className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 outline-none"
-                  onChange={(e) =>
-                    setFormData({ ...formData, code: e.target.value })
-                  }
+                  onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                 />
-                <p
-                  className="text-xs text-right mt-1 text-gray-500 cursor-pointer hover:text-green-600"
-                  onClick={async () => {
-                    await resendSignUpCode({ username: formData.email });
-                    setSuccessMsg("Code resent!");
-                  }}
-                >
-                  Resend Code
-                </p>
+                {view === "confirm" && (
+                    <p className="text-xs text-right mt-1 text-gray-500 cursor-pointer hover:text-green-600"
+                    onClick={async () => { await resendSignUpCode({ username: formData.email }); setSuccessMsg("Code resent!"); }}>
+                    Resend Code
+                    </p>
+                )}
               </div>
             )}
 
-            {/* --- LOGIN HELPERS --- */}
+            {/* HELPERS */}
             {view === "login" && (
               <div className="flex justify-end">
                 <button
@@ -283,37 +297,29 @@ export default function AuthModal({ isOpen, onClose }) {
                 "Create Account"
               ) : view === "confirm" ? (
                 "Verify Code"
+              ) : view === "forgot-password" ? (
+                "Send Reset Link"
               ) : (
-                "Send Link"
+                "Change Password"
               )}
             </button>
           </form>
 
-          {/* --- FOOTER NAVIGATION --- */}
+          {/* FOOTER */}
           <div className="mt-6 text-center text-sm text-gray-500">
             {view === "login" ? (
-              <button
-                onClick={() => setView("signup")}
-                className="font-semibold text-green-600 cursor-pointer"
-              >
+              <button onClick={() => setView("signup")} className="font-semibold text-green-600 cursor-pointer">
                 Sign up
               </button>
             ) : view === "signup" ? (
-              <button
-                onClick={() => setView("login")}
-                className="font-semibold text-green-600 cursor-pointer"
-              >
+              <button onClick={() => setView("login")} className="font-semibold text-green-600 cursor-pointer">
                 Log in
               </button>
             ) : (
-              <button
-                onClick={() => setView("login")}
-                className="font-semibold text-green-600 flex items-center justify-center gap-1 mx-auto cursor-pointer"
-              >
+              <button onClick={() => setView("login")} className="font-semibold text-green-600 flex items-center justify-center gap-1 mx-auto cursor-pointer">
                 <ArrowLeft className="h-4 w-4" /> Back to Login
               </button>
             )}
-            
           </div>
         </div>
       </div>
