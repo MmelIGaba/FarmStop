@@ -313,6 +313,7 @@ export default function AuthModal({ isOpen, onClose }) {
                 <ArrowLeft className="h-4 w-4" /> Back to Login
               </button>
             )}
+            
           </div>
         </div>
       </div>
