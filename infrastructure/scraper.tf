@@ -34,7 +34,7 @@ resource "aws_lambda_function" "scraper" {
   # This points to the repo we created in step 1
   image_uri     = "${aws_ecr_repository.scraper_repo.repository_url}:latest"
   
-  timeout       = 300 # 5 minutes max
+  timeout       = 900 # 5 minutes max
   memory_size   = 128
 
   environment {
