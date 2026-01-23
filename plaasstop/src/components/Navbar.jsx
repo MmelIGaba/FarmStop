@@ -1,14 +1,12 @@
 import { ShoppingCart, User, Tractor, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { signOut } from 'aws-amplify/auth'; // <--- CHANGED: Use AWS, not Supabase
+import { signOut } from 'aws-amplify/auth'; 
 
-// Changed prop 'session' to 'user' to match App.jsx
 export default function Navbar({ user, onOpenAuth }) {
   
   const handleLogout = async () => {
     try {
-      await signOut(); // <--- CHANGED: AWS SignOut
-      // App.jsx Hub listener will handle the UI update, but we can force reload/redirect if preferred
+      await signOut(); t
       window.location.href = '/'; 
     } catch (error) {
       console.error("Error signing out:", error);
