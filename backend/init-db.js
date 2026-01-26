@@ -9,41 +9,53 @@ const client = new Client({
 async function init() {
   try {
     await client.connect();
-    console.log("Connected to AWS RDS...");
+    console.log("🔌 Connected to AWS RDS...");
 
-    console.log("1. Enabling PostGIS...");
+    console.log("1. 🗺️ Enabling PostGIS...");
     await client.query("CREATE EXTENSION IF NOT EXISTS postgis;");
 
-    console.log("2. Creating Tables...");
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS farms (
-        id SERIAL PRIMARY KEY,
-        name TEXT NOT NULL,
-        type TEXT DEFAULT 'lead',
-        status TEXT DEFAULT 'unclaimed',
-        products TEXT[],
-        contact JSONB,
-        owner_id UUID,
-        location GEOGRAPHY(POINT, 4326),
-        created_at TIMESTAMP DEFAULT NOW()
-      );
-    `);
-
+    console.log("2. 🏗️ Creating Users Table...");
+    // Changed UUID to VARCHAR(255) to be safe with Cognito IDs
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id UUID PRIMARY KEY,
-        email TEXT UNIQUE,
-        role TEXT,
-        name TEXT,
+        id VARCHAR(255) PRIMARY KEY,
+        email VARCHAR(255) UNIQUE,
+        role VARCHAR(50),
+        name VARCHAR(255),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       );
     `);
 
-    console.log("3. Creating Indexes...");
+    console.log("3. 🚜 Creating Farms Table...");
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS farms (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        type VARCHAR(50) DEFAULT 'lead',
+        status VARCHAR(50) DEFAULT 'unclaimed',
+        products TEXT[],
+        contact JSONB,
+        owner_id VARCHAR(255),
+        location GEOGRAPHY(POINT, 4326),
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
+    console.log("4. 🔍 Creating Indexes...");
     await client.query("CREATE INDEX IF NOT EXISTS farms_geo_idx ON farms USING GIST (location);");
 
-    console.log("✅ Database initialized successfully on AWS!");
+    console.log("5. 🌱 Seeding Dummy Data...");
+    // We use ON CONFLICT DO NOTHING so we don't crash if we run this twice
+    await client.query(`
+      INSERT INTO farms (name, type, status, products, location)
+      VALUES 
+      ('Happy Cow Dairy', 'vendor', 'verified', ARRAY['Milk', 'Cheese'], ST_SetSRID(ST_MakePoint(28.2293, -25.7479), 4326)),
+      ('Sunshine Veggies', 'lead', 'unclaimed', ARRAY['Carrots', 'Spinach'], ST_SetSRID(ST_MakePoint(28.0473, -26.2041), 4326))
+      ON CONFLICT DO NOTHING;
+    `);
+
+    console.log("✅ Database initialized successfully!");
   } catch (err) {
     console.error("❌ Error:", err);
   } finally {
