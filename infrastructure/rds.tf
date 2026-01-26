@@ -18,7 +18,7 @@ resource "aws_db_instance" "default" {
   engine_version         = "16.3" # Latest stable standard
   instance_class         = "db.t3.micro" # Free Tier Eligible
   username               = "postgres"
-  password               = "mysecretpassword" # CHANGE THIS!
+  password               = "mysecretpassword" 
   parameter_group_name   = "default.postgres16"
   skip_final_snapshot    = true # Don't backup when destroying (for learning)
   publicly_accessible    = true # Temporary: Allow laptop access for setup
