@@ -46,8 +46,7 @@ resource "aws_launch_template" "app_lt" {
               # Create .env file dynamically
               echo "DATABASE_URL=postgres://postgres:mysecretpassword@${aws_db_instance.default.address}:5432/plaasstop" > .env
               echo "PORT=5000" >> .env
-              # Note: For Prod, this should be the CloudFront URL, not S3
-              echo "FRONTEND_URL=*" >> .env 
+              echo "FRONTEND_URL=https://farmstop.mmeligabriel.online" >> .env
               echo "COGNITO_USER_POOL_ID=${aws_cognito_user_pool.main.id}" >> .env
               echo "COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.client.id}" >> .env
 
@@ -95,7 +94,7 @@ resource "aws_autoscaling_group" "app_asg" {
     id      = aws_launch_template.app_lt.id
     version = "$Latest"
   }
-  
+
   # Wait for instances to be healthy
   health_check_type         = "ELB"
   health_check_grace_period = 300
@@ -128,7 +127,21 @@ output "alb_dns_name" {
   value = aws_lb.main_alb.dns_name
 }
 
-# --- ADDED THIS OUTPUT ---
 output "asg_name" {
   value = aws_autoscaling_group.app_asg.name
+}
+
+resource "aws_lb_listener" "https_listener" {
+  load_balancer_arn = aws_lb.main_alb.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+
+  # Use the SAME Wildcard Certificate
+  certificate_arn = "arn:aws:acm:us-east-1:413048887333:certificate/c6e4c8d7-7978-4f0b-815e-8e981ed3efee"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.app_tg.arn
+  }
 }

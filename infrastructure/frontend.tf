@@ -51,11 +51,13 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  # Origin A: S3 (Frontend)
+  # 1. Custom Domain Alias
+  aliases = ["farmstop.mmeligabriel.online"]
+
+  # 2. Origins (Keep S3 and ALB)
   origin {
     domain_name = aws_s3_bucket_website_configuration.frontend_hosting.website_endpoint
     origin_id   = "S3-Frontend"
-
     custom_origin_config {
       http_port              = 80
       https_port             = 443
@@ -64,56 +66,42 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
-  # Origin B: Load Balancer (Backend API)
   origin {
     domain_name = aws_lb.main_alb.dns_name
     origin_id   = "ALB-Backend"
-
     custom_origin_config {
       http_port              = 80
       https_port             = 443
-      origin_protocol_policy = "http-only" # CF talks to ALB over HTTP (Hidden from user)
+      origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
-  # Behavior for API calls (Route /api/* to ALB)
+  # 3. 
   ordered_cache_behavior {
     path_pattern     = "/api/*"
     target_origin_id = "ALB-Backend"
-
     allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods   = ["GET", "HEAD"]
-    
-    # Do NOT cache API responses
     min_ttl          = 0
     default_ttl      = 0
     max_ttl          = 0
-
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Host"] # Pass the Auth Token!
-      cookies {
-        forward = "all"
-      }
+      headers      = ["Authorization", "Host"]
+      cookies { forward = "all" }
     }
-
     viewer_protocol_policy = "redirect-to-https"
   }
 
-  # Default Behavior (Serve React App)
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-Frontend"
-
     forwarded_values {
       query_string = false
-      cookies {
-        forward = "none"
-      }
+      cookies { forward = "none" }
     }
-
     viewer_protocol_policy = "redirect-to-https"
     min_ttl                = 0
     default_ttl            = 3600
@@ -126,16 +114,14 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
+  # 4. SSL Certificate (The Wildcard)
   viewer_certificate {
-    cloudfront_default_certificate = true
+    acm_certificate_arn      = "arn:aws:acm:us-east-1:413048887333:certificate/c6e4c8d7-7978-4f0b-815e-8e981ed3efee"
+    ssl_support_method       = "sni-only"
+    minimum_protocol_version = "TLSv1.2_2021"
   }
 }
 
-# 5. --- OUTPUTS ---
 output "frontend_url" {
-  value = "https://${aws_cloudfront_distribution.frontend_cdn.domain_name}"
-}
-
-output "cloudfront_distribution_id" {
-  value = aws_cloudfront_distribution.frontend_cdn.id
+  value = "https://farmstop.mmeligabriel.online"
 }
