@@ -22,18 +22,14 @@ const pool = new Pool({
       : { rejectUnauthorized: false },
 });
 
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://my-bucket.s3-website-us-east-1.amazonaws.com",
-  "https://d12345abcdef.cloudfront.net",
-  "https://farmstop.mmeligabriel.online",
+const allowedOrigins = ["http://localhost:3000","http://my-bucket.s3-website-us-east-1.amazonaws.com","https://d12345abcdef.cloudfront.net","https://farmstop.mmeligabriel.online",
 ];
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      
+
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
@@ -41,7 +37,7 @@ app.use(
         return callback(new Error("Not allowed by CORS"));
       }
     },
-  })
+  }),
 );
 app.use(express.json());
 app.use(helmet());
