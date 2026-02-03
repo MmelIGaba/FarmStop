@@ -1,8 +1,6 @@
-# infrastructure/frontend.tf
-
 # 1. The S3 Bucket
 resource "aws_s3_bucket" "frontend_bucket" {
-  bucket        = "plaasstop-frontend-mmeli" # Must be unique
+  bucket        = "plaasstop-frontend-mmeli"
   force_destroy = true
 }
 
@@ -18,7 +16,7 @@ resource "aws_s3_bucket_website_configuration" "frontend_hosting" {
   }
 }
 
-# 3. Public Access (Required because we are using S3 Website Endpoint as Origin)
+# 3. Public Access
 resource "aws_s3_bucket_public_access_block" "frontend_access" {
   bucket = aws_s3_bucket.frontend_bucket.id
 
@@ -51,10 +49,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   is_ipv6_enabled     = true
   default_root_object = "index.html"
 
-  # 1. Custom Domain Alias
+  # Custom Domain Alias
   aliases = ["farmstop.mmeligabriel.online"]
 
-  # 2. Origins (Keep S3 and ALB)
+  # Origin A: S3 (Frontend)
   origin {
     domain_name = aws_s3_bucket_website_configuration.frontend_hosting.website_endpoint
     origin_id   = "S3-Frontend"
@@ -66,26 +64,29 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
+  # Origin B: EC2 Instance (Direct)
   origin {
-    domain_name = aws_lb.main_alb.dns_name
-    origin_id   = "ALB-Backend"
+    domain_name = aws_instance.app_server.public_dns # <--- CHANGED: Point to EC2
+    origin_id   = "EC2-Backend"
+
     custom_origin_config {
-      http_port              = 80
+      http_port              = 5000 # <--- CHANGED: Direct to Node.js Port
       https_port             = 443
       origin_protocol_policy = "http-only"
       origin_ssl_protocols   = ["TLSv1.2"]
     }
   }
 
-  # 3. 
+  # Behavior for API calls
   ordered_cache_behavior {
     path_pattern     = "/api/*"
-    target_origin_id = "ALB-Backend"
-    allowed_methods  = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
-    cached_methods   = ["GET", "HEAD"]
-    min_ttl          = 0
-    default_ttl      = 0
-    max_ttl          = 0
+    target_origin_id = "EC2-Backend" # <--- CHANGED
+
+    allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
+    cached_methods  = ["GET", "HEAD"]
+    min_ttl         = 0
+    default_ttl     = 0
+    max_ttl         = 0
     forwarded_values {
       query_string = true
       headers      = ["Authorization", "Host"]
@@ -94,6 +95,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     viewer_protocol_policy = "redirect-to-https"
   }
 
+  # Default Behavior (Frontend)
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD", "OPTIONS"]
     cached_methods   = ["GET", "HEAD"]
@@ -114,7 +116,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     }
   }
 
-  # 4. SSL Certificate (The Wildcard)
+  # SSL Certificate
   viewer_certificate {
     acm_certificate_arn      = "arn:aws:acm:us-east-1:413048887333:certificate/c6e4c8d7-7978-4f0b-815e-8e981ed3efee"
     ssl_support_method       = "sni-only"

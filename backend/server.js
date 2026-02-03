@@ -23,24 +23,29 @@ const pool = new Pool({
 });
 
 const allowedOrigins = [
-  "http://localhost:5173",
-  process.env.FRONTEND_URL,
-].filter(Boolean);
+  "http://localhost:3000",
+  "http://my-bucket.s3-website-us-east-1.amazonaws.com",
+  "https://d12345abcdef.cloudfront.net",
+  "https://farmstop.mmeligabriel.online",
+];
+res.header("Access-Control-Allow-Origin", "*");
+res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin) || origin.includes("s3-website")) {
+      
+      if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
         console.log("Blocked by CORS:", origin);
         return callback(new Error("Not allowed by CORS"));
       }
     },
-  }),
+  })
 );
-
 app.use(express.json());
 app.use(helmet());
 
