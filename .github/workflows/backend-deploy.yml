@@ -18,10 +18,6 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      # Optional: Run Tests here if you have them
-      # - name: Run Tests
-      #   run: npm test
-
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -29,10 +25,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Trigger ASG Instance Refresh
-        # This forces the Auto Scaling Group to replace instances with new ones
-        # New instances will pull the latest code via their UserData script
+      - name: Deploy to EC2 via SSM
         run: |
-          aws autoscaling start-instance-refresh \
-            --auto-scaling-group-name ${{ secrets.ASG_NAME }} \
-            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 60}'
+          aws ssm send-command \
+            --targets "Key=instanceIds,Values=${{ secrets.EC2_INSTANCE_ID }}" \
+            --document-name "AWS-RunShellScript" \
+            --comment "Deploy latest backend" \
+            --parameters 'commands=[
+              "cd /home/ec2-user/app",
+              "sudo -u ec2-user git pull origin main",
+              "cd backend",
+              "sudo -u ec2-user npm install",
+              "pm2 restart farmstop-api"
+            ]'
+          
