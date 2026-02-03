@@ -1,57 +1,29 @@
 # infrastructure/security.tf
 
-# 1. Load Balancer Security Group (The Front Door)
-resource "aws_security_group" "alb_sg" {
-  name        = "plaasstop-alb-sg"
-  description = "Allow HTTP inbound traffic"
+# 1. "alb_sg" resource entirely. 
+
+# 2. App Server Security Group (Updated for Single Server Mode)
+resource "aws_security_group" "app_sg" {
+  name        = "plaasstop-app-sg"
+  description = "Security group for Single App Instance"
   vpc_id      = aws_vpc.main.id
 
-  # Allow HTTP from anywhere
+  # Rule: Allow Traffic on Port 5000 from the Internet (CloudFront connects here)
   ingress {
-    description = "HTTP from Internet"
-    from_port   = 80
-    to_port     = 80
+    description = "NodeJS API Access"
+    from_port   = 5000
+    to_port     = 5000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
-  
 
-  # Allow all outbound traffic (so the ALB can talk to EC2)
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "plaasstop-alb-sg"
-  }
-}
-
-# 2. App Server Security Group (The Logic Layer)
-resource "aws_security_group" "app_sg" {
-  name        = "plaasstop-app-sg"
-  description = "Security group for App Instances"
-  vpc_id      = aws_vpc.main.id
-
-  # Rule: Only allow traffic from the Load Balancer on port 5000
-  ingress {
-    description     = "Traffic from ALB"
-    from_port       = 5000
-    to_port         = 5000
-    protocol        = "tcp"
-    security_groups = [aws_security_group.alb_sg.id]
-  }
-
-  # Rule: Allow SSH only for debugging (We will lock this down later)
-  # Ideally, you should replace "0.0.0.0/0" with your specific IP address
+  # Rule: Allow SSH for debugging
   ingress {
     description = "SSH from Anywhere"
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   # Allow the server to download updates (npm install, yum update)
@@ -67,7 +39,7 @@ resource "aws_security_group" "app_sg" {
   }
 }
 
-# 3. Database Security Group (The Vault)
+# 3. Database Security Group (Unchanged)
 resource "aws_security_group" "db_sg" {
   name        = "plaasstop-db-sg"
   description = "Security group for RDS Database"
@@ -81,18 +53,15 @@ resource "aws_security_group" "db_sg" {
     protocol        = "tcp"
     security_groups = [aws_security_group.app_sg.id]
   }
-    # Temporary: Allow access from ANYWHERE so you can initialize the DB
+
+  # Temporary: Allow access from ANYWHERE for DBeaver setup
   ingress {
     description = "Postgres Public Access"
     from_port   = 5432
     to_port     = 5432
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] 
+    cidr_blocks = ["0.0.0.0/0"]
   }
-  
-  # Also allow traffic from your local IP for initial setup/migration?
-  # If you want to connect from your laptop, we need to add that here.
-  # Let's keep it secure for now.
 
   tags = {
     Name = "plaasstop-db-sg"

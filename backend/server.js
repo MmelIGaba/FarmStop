@@ -28,6 +28,9 @@ const allowedOrigins = [
   "https://d12345abcdef.cloudfront.net",
   "https://farmstop.mmeligabriel.online",
 ];
+res.header("Access-Control-Allow-Origin", "*");
+res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
 
 app.use(
   cors({
