@@ -10,15 +10,12 @@ data "aws_ami" "amazon_linux" {
 
 # 2. CREATE: Single "Free Tier" Server (Replaces ASG & ALB)
 resource "aws_instance" "app_server" {
-  ami           = data.aws_ami.amazon_linux.id
-  instance_type = "t3.micro"
-
-  # NETWORK: Put in Public Subnet so we don't need a NAT Gateway
+  ami                         = data.aws_ami.amazon_linux.id
+  instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.public_subnet.id
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
 
-  # Attach IAM Instance Profile for SSM
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_profile.name
 
   # Optional: Add SSH Key if you made one earlier
@@ -45,7 +42,8 @@ resource "aws_instance" "app_server" {
               # Inject Env Vars
               echo "DATABASE_URL=postgres://postgres:mysecretpassword@${aws_db_instance.default.address}:5432/plaasstop" > .env
               echo "PORT=5000" >> .env
-              echo "FRONTEND_URL=*" >> .env 
+              echo "FRONTEND_URL=https://farmstop.mmeligabriel.online" >> .env
+              echo "CLOUDFRONT_URL=https://farmstop.mmeligabriel.online" >> .env
               echo "COGNITO_USER_POOL_ID=${aws_cognito_user_pool.main.id}" >> .env
               echo "COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.client.id}" >> .env
 

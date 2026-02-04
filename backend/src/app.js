@@ -8,9 +8,9 @@ const authRoutes = require("./routes/authRoutes");
 
 const app = express();
 
-// --- Middleware ---
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",  
   process.env.FRONTEND_URL,
   process.env.CLOUDFRONT_URL
 ].filter(Boolean);
@@ -18,7 +18,7 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+      if (!origin) return callback(null, true); 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       } else {
@@ -26,8 +26,11 @@ app.use(
         return callback(new Error("Not allowed by CORS"));
       }
     },
+    credentials: true, 
   })
 );
+
+app.options("*", cors());
 
 app.use(express.json());
 app.use(helmet());

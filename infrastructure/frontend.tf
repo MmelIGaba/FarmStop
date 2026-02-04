@@ -89,9 +89,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     max_ttl         = 0
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Host"]
+      headers      = ["Authorization", "Host", "Origin"]
       cookies { forward = "all" }
     }
+
     viewer_protocol_policy = "redirect-to-https"
   }
 
