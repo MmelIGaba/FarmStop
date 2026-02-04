@@ -1,5 +1,3 @@
-# infrastructure/compute.tf
-
 # 1. Get the latest Amazon Linux 2 AMI
 data "aws_ami" "amazon_linux" {
   most_recent = true
@@ -20,6 +18,9 @@ resource "aws_instance" "app_server" {
   associate_public_ip_address = true
   vpc_security_group_ids      = [aws_security_group.app_sg.id]
 
+  # Attach IAM Instance Profile for SSM
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_profile.name
+
   # Optional: Add SSH Key if you made one earlier
   # key_name = "my-laptop-key" 
 
@@ -27,7 +28,10 @@ resource "aws_instance" "app_server" {
               #!/bin/bash
               dnf update -y
               curl -fsSL https://rpm.nodesource.com/setup_20.x | bash -
-              dnf install -y nodejs git postgresql15
+              dnf install -y nodejs git postgresql15 amazon-ssm-agent
+
+              systemctl enable amazon-ssm-agent
+              systemctl start amazon-ssm-agent
               
               mkdir -p /home/ec2-user/app
               chown ec2-user:ec2-user /home/ec2-user/app
@@ -41,10 +45,7 @@ resource "aws_instance" "app_server" {
               # Inject Env Vars
               echo "DATABASE_URL=postgres://postgres:mysecretpassword@${aws_db_instance.default.address}:5432/plaasstop" > .env
               echo "PORT=5000" >> .env
-              
-              # Allow CloudFront to talk to us
               echo "FRONTEND_URL=*" >> .env 
-              
               echo "COGNITO_USER_POOL_ID=${aws_cognito_user_pool.main.id}" >> .env
               echo "COGNITO_CLIENT_ID=${aws_cognito_user_pool_client.client.id}" >> .env
 
@@ -55,6 +56,7 @@ resource "aws_instance" "app_server" {
               EOF
   )
 
+
   tags = {
     Name = "plaasstop-free-server"
   }
@@ -63,4 +65,9 @@ resource "aws_instance" "app_server" {
 # 3. OUTPUT: The Public DNS (CloudFront needs this!)
 output "api_public_dns" {
   value = aws_instance.app_server.public_dns
+}
+
+# 4. OUTPUT: Instance ID (for GitHub Actions secret)
+output "app_instance_id" {
+  value = aws_instance.app_server.id
 }

@@ -3,7 +3,7 @@ const { Client } = require('pg');
 
 const client = new Client({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // Required for AWS RDS
+  ssl: { rejectUnauthorized: false } 
 });
 
 async function init() {
@@ -11,11 +11,10 @@ async function init() {
     await client.connect();
     console.log("🔌 Connected to AWS RDS...");
 
-    console.log("1. 🗺️ Enabling PostGIS...");
+    console.log("1. Enabling PostGIS...");
     await client.query("CREATE EXTENSION IF NOT EXISTS postgis;");
 
-    console.log("2. 🏗️ Creating Users Table...");
-    // Changed UUID to VARCHAR(255) to be safe with Cognito IDs
+    console.log("2. Creating Users Table...");
     await client.query(`
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(255) PRIMARY KEY,
@@ -46,7 +45,6 @@ async function init() {
     await client.query("CREATE INDEX IF NOT EXISTS farms_geo_idx ON farms USING GIST (location);");
 
     console.log("5. 🌱 Seeding Dummy Data...");
-    // We use ON CONFLICT DO NOTHING so we don't crash if we run this twice
     await client.query(`
       INSERT INTO farms (name, type, status, products, location)
       VALUES 
