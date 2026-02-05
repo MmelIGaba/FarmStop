@@ -4,10 +4,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Connect to AWS RDS
 try:
     conn = psycopg2.connect(os.getenv("DATABASE_URL"))
-    conn.autocommit = True # Needed to create extensions/databases
+    conn.autocommit = True 
     cursor = conn.cursor()
 
     print("--- 1. Enabling PostGIS ---")
@@ -27,7 +26,7 @@ try:
             location GEOGRAPHY(POINT, 4326)
         );
     """)
-    # Create a spatial index for fast searching
+
     cursor.execute("CREATE INDEX IF NOT EXISTS farms_geo_index ON farms USING GIST (location);")
     print("Success.")
 

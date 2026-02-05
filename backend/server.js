@@ -22,15 +22,16 @@ const pool = new Pool({
       : { rejectUnauthorized: false },
 });
 
-const allowedOrigins = ["http://localhost:3000","http://my-bucket.s3-website-us-east-1.amazonaws.com","https://d12345abcdef.cloudfront.net","https://farmstop.mmeligabriel.online",
-];
+const allowedOrigins = [
+  "http://localhost:5173",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || origin.includes("s3-website")) {
         return callback(null, true);
       } else {
         console.log("Blocked by CORS:", origin);
@@ -39,6 +40,7 @@ app.use(
     },
   }),
 );
+
 app.use(express.json());
 app.use(helmet());
 

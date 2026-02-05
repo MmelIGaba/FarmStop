@@ -80,7 +80,7 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
   # Behavior for API calls
   ordered_cache_behavior {
     path_pattern     = "/api/*"
-    target_origin_id = "EC2-Backend" # <--- CHANGED
+    target_origin_id = "EC2-Backend"
 
     allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PATCH", "POST", "PUT"]
     cached_methods  = ["GET", "HEAD"]
@@ -89,9 +89,10 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
     max_ttl         = 0
     forwarded_values {
       query_string = true
-      headers      = ["Authorization", "Host"]
+      headers      = ["Authorization", "Host", "Origin"]
       cookies { forward = "all" }
     }
+
     viewer_protocol_policy = "redirect-to-https"
   }
 

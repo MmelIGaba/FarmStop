@@ -3,7 +3,7 @@ resource "aws_cognito_user_pool" "main" {
   name = "plaasstop-users"
 
   # Allow login via Email
-  username_attributes = ["email"]
+  username_attributes      = ["email"]
   auto_verified_attributes = ["email"]
 
   password_policy {
@@ -28,10 +28,9 @@ resource "aws_cognito_user_pool_client" "client" {
     "ALLOW_USER_SRP_AUTH"
   ]
 
-  access_token_validity  = 1  # 1 Hour (Max is 24 hours)
-  id_token_validity      = 1  # 1 Hour (Max is 24 hours)
-  refresh_token_validity = 30 # 30 Days
-
+  access_token_validity  = 1
+  id_token_validity      = 1
+  refresh_token_validity = 30
   token_validity_units {
     access_token  = "hours"
     id_token      = "hours"
