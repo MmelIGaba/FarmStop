@@ -80,13 +80,24 @@ function App() {
 
       if (!response.ok) throw new Error("Sync failed");
       
-      const profile = await fetch(`${API_URL}/api/auth/me`...)
-      setDbUser(profile);
+      const profileResponse = await fetch(`${API_URL}/api/auth/me`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!profileResponse.ok) throw new Error("Failed to fetch profile");
+
+      const profileData = await profileResponse.json();
+      setDbUser(profileData);
 
     } catch (error) {
       console.error("Backend Sync Error:", error);
     }
   }
+  
 
   return (
     <Router>
