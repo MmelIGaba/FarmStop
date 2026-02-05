@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { Amplify } from "aws-amplify";
 import { getCurrentUser, fetchAuthSession } from "aws-amplify/auth"; 
 import { Hub } from "aws-amplify/utils";
+import Marketplace from "./pages/Marketplace";
 
 import Navbar from "./components/Navbar";
 import AuthModal from "./components/AuthModal";
@@ -79,9 +80,8 @@ function App() {
 
       if (!response.ok) throw new Error("Sync failed");
       
-      // Optional: 
-      // const profile = await fetch(`${API_URL}/api/auth/me`...)
-      // setDbUser(profile);
+      const profile = await fetch(`${API_URL}/api/auth/me`...)
+      setDbUser(profile);
 
     } catch (error) {
       console.error("Backend Sync Error:", error);
@@ -96,12 +96,13 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/marketplace" element={<FindFarms />} />
-          <Route
+          <Route path="/marketplace" element={<Marketplace />} />
+          {/* <Route
             path="/vendors"
             element={
               <div className="p-20 text-center">Vendor Portal Coming Soon</div>
             }
-          />
+          /> */}
           <Route path="/about" element={<About />} />
         </Routes>
         <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
