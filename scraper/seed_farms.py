@@ -4,7 +4,6 @@ import psycopg2
 from geopy.geocoders import Nominatim
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# --- MODERN CONFIG MANAGEMENT ---
 class Settings(BaseSettings):
     database_url: str 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
@@ -21,8 +20,6 @@ def get_lat_long(geolocator, address):
         return None
 
 
-# --- THE LAMBDA HANDLER ---
-# This is what AWS calls when the scheduled event fires
 def lambda_handler(event, context):
     print("--- Starting Scraper Job ---")
     

@@ -1,17 +1,19 @@
 const { CognitoJwtVerifier } = require("aws-jwt-verify");
-const logger = require('../config/logger');
+const logger = require("../config/logger");
 
 const verifier = CognitoJwtVerifier.create({
-  userPoolId: !process.env.COGNITO_USER_POOL_ID || process.env.COGNITO_USER_POOL_ID === "undefined"
-    ? "us-east-1_ExamplePoolId"
-    : process.env.COGNITO_USER_POOL_ID,
+  userPoolId:
+    !process.env.COGNITO_USER_POOL_ID ||
+    process.env.COGNITO_USER_POOL_ID === "undefined"
+      ? "us-east-1_ExamplePoolId"
+      : process.env.COGNITO_USER_POOL_ID,
   tokenUse: "access",
   clientId: process.env.COGNITO_CLIENT_ID,
 });
 
 const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader?.startsWith("Bearer ")) {
     return res.status(401).json({ error: "Unauthorized: No token provided" });
   }

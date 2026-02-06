@@ -42,11 +42,8 @@ exports.claimFarm = async (req, res, next) => {
     if (checkRes.rows.length === 0) throw new Error("Farm not found");
     if (checkRes.rows[0].type !== "lead")
       throw new Error("Farm already claimed");
-
     await client.query(queries.CLAIM_FARM_UPDATE, [userId, farmId]);
-
     await client.query(authQueries.UPDATE_USER_ROLE, ["vendor", userId]);
-
     await client.query("COMMIT");
 
     logger.info(`Farm ${farmId} claimed by user ${userId}`);

@@ -2,9 +2,9 @@ export const farmsData = [
     {
       id: 1,
       name: "Green Valley Organics",
-      type: "vendor", // This is a registered user
+      type: "vendor", 
       distance: "2.5 km",
-      lat: -25.7479, // Example: Pretoria coordinates
+      lat: -25.7479, 
       lng: 28.2293,
       products: ["Tomatoes", "Spinach", "Free-range Eggs"],
       image: "https://images.unsplash.com/photo-1595855709915-445676396832?auto=format&fit=crop&w=300&q=80",
@@ -13,12 +13,12 @@ export const farmsData = [
     {
       id: 2,
       name: "Hansen's Dairy Farm",
-      type: "lead", // This is scraped public info
+      type: "lead", 
       distance: "5.1 km",
       lat: -25.7800,
       lng: 28.2500,
       products: ["Milk", "Cream", "Cheese"],
-      image: null, // Scraped leads might not have images
+      image: null, 
       contact: { phone: "082-555-0199", address: "Plot 44, Old Farm Rd" }
     },
     {

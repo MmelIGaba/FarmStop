@@ -9,11 +9,9 @@ exports.SEARCH_FARMS = `
 `;
 
 exports.CHECK_FARM_FOR_UPDATE = `SELECT type FROM farms WHERE id = $1 FOR UPDATE`;
-
 exports.CLAIM_FARM_UPDATE = `
   UPDATE farms 
   SET owner_id = $1, type = 'vendor', status = 'pending_verification' 
   WHERE id = $2
 `;
-
 exports.GET_FARM_BY_OWNER = `SELECT * FROM farms WHERE owner_id = $1`;

@@ -10,5 +10,4 @@ exports.UPSERT_USER = `
 `;
 
 exports.GET_USER_BY_ID = `SELECT * FROM users WHERE id = $1`;
-
 exports.UPDATE_USER_ROLE = `UPDATE users SET role = $1 WHERE id = $2`;
