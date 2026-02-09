@@ -11,6 +11,8 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
+  "http://plaasstop-frontend-mmeli.s3-website-us-east-1.amazonaws.com",
+  "https://farmstop.mmeligabriel.online",
   process.env.FRONTEND_URL,
   process.env.CLOUDFRONT_URL,
 ].filter(Boolean);
