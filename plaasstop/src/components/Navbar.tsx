@@ -1,12 +1,24 @@
-import { ShoppingCart, User, Tractor, LogOut, ChevronDown } from 'lucide-react';
+import React from 'react';
+import { ShoppingCart, User, Tractor, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { signOut } from 'aws-amplify/auth'; 
 
-export default function Navbar({ user, dbUser, onOpenAuth }) {
+import { CognitoUser, DbUser } from '../types';
+import { useCart } from '../context/CartContext';
+
+interface NavbarProps {
+  user: CognitoUser | null;
+  dbUser: DbUser | null;
+  onOpenAuth: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ user, dbUser, onOpenAuth }) => {
   
+  const { cartCount } = useCart();
+
   const displayName = dbUser?.name || user?.username || "Farmer";
   
-  const getInitials = (name) => {
+  const getInitials = (name: string) => {
     return name
       .split(' ')
       .map(word => word[0])
@@ -63,11 +75,20 @@ export default function Navbar({ user, dbUser, onOpenAuth }) {
           {/* Right Side Interactions */}
           <div className="flex items-center gap-4">
             
-            {/* Shopping Cart */}
-            <button className="p-2 hover:bg-gray-100 rounded-full relative cursor-pointer group transition">
+            {/* 4. DYNAMIC SHOPPING CART */}
+            <Link 
+              to="/cart" 
+              className="p-2 hover:bg-gray-100 rounded-full relative cursor-pointer group transition"
+            >
               <ShoppingCart className="h-6 w-6 text-gray-600 group-hover:text-green-600 transition" />
-              <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center border-2 border-white">0</span>
-            </button>
+              
+              {/* Only show badge if count > 0 */}
+              {cartCount > 0 && (
+                <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 rounded-full text-[10px] text-white flex items-center justify-center border-2 border-white animate-pulse">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
             
             {/* Separator Line */}
             <div className="h-6 w-px bg-gray-300 mx-2 hidden sm:block"></div>
@@ -91,7 +112,7 @@ export default function Navbar({ user, dbUser, onOpenAuth }) {
                   {getInitials(displayName)}
                 </div>
 
-                {/* Logout Button (Icon only on mobile, text on desktop) */}
+                {/* Logout Button */}
                 <button 
                   onClick={handleLogout}
                   title="Sign Out"
@@ -116,3 +137,5 @@ export default function Navbar({ user, dbUser, onOpenAuth }) {
     </nav>
   );
 }
+
+export default Navbar;

@@ -128,3 +128,15 @@ resource "aws_cloudfront_distribution" "frontend_cdn" {
 output "frontend_url" {
   value = "https://farmstop.mmeligabriel.online"
 }
+
+resource "aws_s3_bucket_cors_configuration" "frontend_cors" {
+  bucket = aws_s3_bucket.frontend_bucket.id
+
+  cors_rule {
+    allowed_headers = ["*"]
+    allowed_methods = ["GET", "HEAD"]
+    allowed_origins = ["*"]
+    expose_headers  = ["ETag"]
+    max_age_seconds = 3000
+  }
+}
