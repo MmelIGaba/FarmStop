@@ -13,6 +13,7 @@ const allowedOrigins = [
   "http://localhost:5174",
   "http://plaasstop-frontend-mmeli.s3-website-us-east-1.amazonaws.com",
   "https://farmstop.mmeligabriel.online",
+  "https://d1usvkggin2tq7.cloudfront.net",
   process.env.FRONTEND_URL,
   process.env.CLOUDFRONT_URL,
 ].filter(Boolean);
