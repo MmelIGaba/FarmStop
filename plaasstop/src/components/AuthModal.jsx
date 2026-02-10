@@ -9,7 +9,7 @@ import {
   ArrowLeft,
   Loader2,
   CheckCircle,
-  KeyRound, // Added Icon
+  KeyRound, 
 } from "lucide-react";
 import {
   signIn,
@@ -17,12 +17,11 @@ import {
   confirmSignUp,
   resendSignUpCode,
   resetPassword,
-  confirmResetPassword, // <--- NEW IMPORT
+  confirmResetPassword, 
   fetchAuthSession,
 } from "aws-amplify/auth";
 
 export default function AuthModal({ isOpen, onClose }) {
-  // Views: 'login', 'signup', 'confirm', 'forgot-password', 'forgot-password-submit'
   const [view, setView] = useState("login"); 
   const [role, setRole] = useState("buyer");
   const [loading, setLoading] = useState(false);
@@ -31,7 +30,7 @@ export default function AuthModal({ isOpen, onClose }) {
 
   const [formData, setFormData] = useState({
     email: "",
-    password: "", // Acts as "New Password" during reset
+    password: "",
     name: "",
     farmName: "",
     code: "",
@@ -125,13 +124,11 @@ export default function AuthModal({ isOpen, onClose }) {
           throw loginErr;
         }
 
-      // --- STEP 1: REQUEST RESET ---
       } else if (view === "forgot-password") {
         await resetPassword({ username: formData.email });
         setSuccessMsg("Reset code sent to email.");
-        setView("forgot-password-submit"); // Move to Step 2
+        setView("forgot-password-submit"); 
       
-      // --- STEP 2: CONFIRM RESET ---
       } else if (view === "forgot-password-submit") {
         await confirmResetPassword({
             username: formData.email,
@@ -150,7 +147,6 @@ export default function AuthModal({ isOpen, onClose }) {
     }
   };
 
-  // Helper to determine title
   const getTitle = () => {
     if(view === "login") return "Welcome back";
     if(view === "signup") return "Create an account";
