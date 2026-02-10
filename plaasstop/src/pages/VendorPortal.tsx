@@ -13,7 +13,7 @@ const VendorPortal: React.FC<VendorPortalProps> = ({ dbUser }) => {
     { id: "analytics", label: "Analytics" },
     { id: "profile", label: "Farm Profile" },
   ];
-  if (dbUser?.role !== "vendor") {
+  if (dbUser) {
     return (
       <div className="p-20 text-center">
         <h2 className="text-2xl font-bold">For Farms</h2>
