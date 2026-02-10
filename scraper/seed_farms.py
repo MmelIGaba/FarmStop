@@ -15,7 +15,6 @@ def get_db_connection():
 
 def get_lat_long(geolocator, address, province=None):
     try:
-        # Restrict search to South Africa, optionally province
         query = f"{address}, {province}, South Africa" if province else f"{address}, South Africa"
         return geolocator.geocode(query, country_codes="za", timeout=10)
     except Exception:
@@ -48,7 +47,6 @@ def lambda_handler(event, context):
 
     geolocator = Nominatim(user_agent="plaasstop_scraper_lambda")
 
-    # Pull leads dynamically from DB instead of hardcoding
     raw_leads = fetch_leads_from_db(cursor, province)
 
     added_count = 0
@@ -92,9 +90,7 @@ def lambda_handler(event, context):
         'body': json.dumps(f"Scrape Complete. Added {added_count} farms.")
     }
 
-# Local testing support
 if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
-    # Example: run for Gauteng province
     lambda_handler({"province": "Gauteng"}, None)
