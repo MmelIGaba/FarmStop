@@ -59,9 +59,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, dbUser, onOpenAuth }) => {
       <Link to="/" className="block px-3 py-2 rounded-md text-gray-700 hover:text-green-600 hover:bg-gray-50">
         Home
       </Link>
-      <Link to="/shop" className="block px-3 py-2 rounded-md text-gray-700 hover:text-green-600 hover:bg-gray-50">
-        Shop
-      </Link>
+
       <Link to="/marketplace" className="block px-3 py-2 rounded-md text-gray-700 hover:text-green-600 hover:bg-gray-50">
         Marketplace
       </Link>

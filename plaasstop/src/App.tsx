@@ -19,7 +19,6 @@ import Marketplace from "./pages/Marketplace";
 import About from "./pages/About";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
-import Shop from "./pages/Shop";
 import "./index.css";
 
 Amplify.configure(AMPLIFY_CONFIG);
@@ -117,7 +116,6 @@ function App() {
 
           <Routes>
             <Route path="/" element={<Home />} />
-            <Route path="/shop" element={<Shop />} />
             <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/farms" element={<FindFarms />} />
             <Route path="/cart" element={<Cart />} />
